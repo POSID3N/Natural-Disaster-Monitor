@@ -9,7 +9,7 @@ export const APP_CONFIG = {
   defaultZoom: 2,
   maxZoom: 18,
   minZoom: 1,
-  tileServer: 'https://tiles.openfreemap.org/styles/liberty',
+  tileServer: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
   
   // Event type definitions with colors and icons
   eventTypes: {
@@ -24,6 +24,24 @@ export const APP_CONFIG = {
       icon: 'military',
       label: 'Military Activity',
       severity: ['low', 'medium', 'high', 'critical']
+    },
+    cyberThreats: {
+      color: '#ef5777',
+      icon: 'sanctions',
+      label: 'Cyber Threats',
+      severity: ['low', 'medium', 'high', 'critical']
+    },
+    protests: {
+      color: '#a55eea',
+      icon: 'disease',
+      label: 'Social Unrest',
+      severity: ['low', 'medium', 'high']
+    },
+    infrastructure: {
+      color: '#808e9b',
+      icon: 'location',
+      label: 'Infra Outages',
+      severity: ['low', 'medium', 'high']
     },
     wildfires: {
       color: '#ff6b6b',
@@ -65,9 +83,12 @@ export const APP_CONFIG = {
 
   // Time range settings
   timeRanges: {
+    '1h': { hours: 1, label: '1 hour' },
+    '6h': { hours: 6, label: '6 hours' },
     '24h': { hours: 24, label: '24 hours' },
+    '48h': { hours: 48, label: '48 hours' },
     '7d': { hours: 168, label: '7 days' },
-    '30d': { hours: 720, label: '30 days' }
+    'all': { hours: Infinity, label: 'All time' }
   },
 
   // Animation settings
@@ -98,17 +119,18 @@ export const APP_CONFIG = {
 
 // Layer presets
 export const LAYER_PRESETS = {
-  security: ['conflicts', 'military', 'sanctions'],
-  natural: ['wildfires', 'earthquakes', 'storms'],
+  security: ['conflicts', 'military', 'cyberThreats', 'protests', 'sanctions'],
+  natural: ['wildfires', 'earthquakes', 'distress', 'storms'],
+  infrastructure: ['infrastructure', 'cables'],
   all: Object.keys(APP_CONFIG.eventTypes),
-  default: ['conflicts', 'wildfires', 'earthquakes']
+  default: ['conflicts', 'cyberThreats', 'protests', 'wildfires', 'earthquakes']
 };
 
 // API endpoints (mock/real)
 export const API_ENDPOINTS = {
-  // Real data sources
-  usgs: 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.geojson',
-  eonet: 'https://eonet.gsfc.nasa.gov/api/v3/events',
+  // Real data sources - using monthly for proper visual density similar to reference
+  usgs: 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_month.geojson',
+  eonet: 'https://eonet.gsfc.nasa.gov/api/v3/events?days=30',
   gdacs: 'https://www.gdacs.org/xml/rss.xml',
   
   // Geocoding

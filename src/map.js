@@ -25,12 +25,10 @@ export class MapController {
 
   init() {
     const { defaultCenter, defaultZoom, tileServer } = APP_CONFIG;
-    const urlParams = new URLSearchParams(window.location.search);
-    const center = [
-      parseFloat(urlParams.get('lng')) || defaultCenter[0],
-      parseFloat(urlParams.get('lat')) || defaultCenter[1]
-    ];
-    const zoom = parseFloat(urlParams.get('zoom')) || defaultZoom;
+    
+    // Use options passed from main.js or fall back to defaults
+    const center = this.options.initialCenter || defaultCenter;
+    const zoom = this.options.initialZoom || defaultZoom;
 
     this.map = new maplibregl.Map({
       container: this.containerId,
@@ -72,54 +70,6 @@ export class MapController {
         data: {
           type: 'FeatureCollection',
           features: []
-        },
-        cluster: true,
-        clusterMaxZoom: 14,
-        clusterRadius: 40,
-        clusterProperties: {
-          types: ['concat', ['concat', ['get', 'type'], ',']]
-        }
-      });
-
-      // Cluster circle layer
-      this.map.addLayer({
-        id: 'clusters',
-        type: 'circle',
-        source: 'events',
-        filter: ['has', 'point_count'],
-        paint: {
-          'circle-color': [
-            'step',
-            ['get', 'point_count'],
-            '#58a6ff',
-            10, '#d29922',
-            50, '#da3633'
-          ],
-          'circle-radius': [
-            'step',
-            ['get', 'point_count'],
-            20,
-            10, 30,
-            50, 40
-          ],
-          'circle-stroke-width': 2,
-          'circle-stroke-color': '#ffffff'
-        }
-      });
-
-      // Cluster count layer
-      this.map.addLayer({
-        id: 'cluster-count',
-        type: 'symbol',
-        source: 'events',
-        filter: ['has', 'point_count'],
-        layout: {
-          'text-field': '{point_count_abbreviated}',
-          'text-size': 14,
-          'text-font': ['Open Sans Bold'],
-        },
-        paint: {
-          'text-color': '#ffffff'
         }
       });
 
@@ -128,12 +78,11 @@ export class MapController {
         id: 'unclustered-point-glow',
         type: 'circle',
         source: 'events',
-        filter: ['all', ['!', ['has', 'point_count']], ['boolean', ['feature-state', 'visible'], true]],
         paint: {
           'circle-color': ['get', 'color'],
-          'circle-radius': 18,
-          'circle-opacity': 0.3,
-          'circle-blur': 1
+          'circle-radius': 24,
+          'circle-opacity': 0.4,
+          'circle-blur': 1.5
         }
       });
 
@@ -142,12 +91,12 @@ export class MapController {
         id: 'unclustered-point-ring',
         type: 'circle',
         source: 'events',
-        filter: ['all', ['!', ['has', 'point_count']], ['boolean', ['feature-state', 'visible'], true]],
         paint: {
           'circle-color': 'transparent',
-          'circle-radius': 14,
-          'circle-stroke-width': 2,
-          'circle-stroke-color': '#ffffff'
+          'circle-radius': 16,
+          'circle-stroke-width': 1.5,
+          'circle-stroke-color': '#ffffff',
+          'circle-stroke-opacity': 0.8
         }
       });
 
@@ -156,10 +105,9 @@ export class MapController {
         id: 'unclustered-point',
         type: 'circle',
         source: 'events',
-        filter: ['all', ['!', ['has', 'point_count']], ['boolean', ['feature-state', 'visible'], true]],
         paint: {
           'circle-color': ['get', 'color'],
-          'circle-radius': 10,
+          'circle-radius': 8,
           'circle-stroke-width': 2,
           'circle-stroke-color': '#ffffff',
           'circle-opacity': 0.95
@@ -171,7 +119,6 @@ export class MapController {
         id: 'event-labels',
         type: 'symbol',
         source: 'events',
-        filter: ['all', ['!', ['has', 'point_count']], ['boolean', ['feature-state', 'visible'], true]],
         layout: {
           'text-field': ['get', 'title'],
           'text-size': 11,
@@ -282,25 +229,9 @@ export class MapController {
     // Store active layer types
     this.activeLayerTypes = new Set(activeTypes);
     
-    if (!this.map.getSource('events')) return;
-    
-    // Build filter expression: show if type is in activeTypes AND not clustered
-    const typeFilter = ['in', ['get', 'type'], ['literal', [...activeTypes]]];
-    const notClustered = ['!', ['has', 'point_count']];
-    
-    // Apply filter to all point layers
-    const filter = ['all', notClustered, typeFilter];
-    
-    this.map.setFilter('unclustered-point', filter);
-    this.map.setFilter('unclustered-point-ring', filter);
-    this.map.setFilter('unclustered-point-glow', filter);
-    this.map.setFilter('event-labels', filter);
-    
-    // For clusters, only show if cluster contains at least one visible type
-    // This is more complex - we need to check if the cluster's types intersect with activeTypes
-    // For simplicity, we show all clusters but they may expand to empty points
-    this.map.setFilter('clusters', ['has', 'point_count']);
-    this.map.setFilter('cluster-count', ['has', 'point_count']);
+    // We do not need MapLibre to filter the points because events.js 
+    // already rigorously filters events before passing them to updateEvents!
+    // Every feature loaded into the source should be displayed.
   }
 
   setLayerOpacity(layerId, opacity) {
@@ -333,12 +264,10 @@ export class MapController {
     // Global events toggle
     const visibility = visible ? 'visible' : 'none';
     if (layerId === 'events') {
-      this.map.setLayoutProperty('clusters', 'visibility', visibility);
-      this.map.setLayoutProperty('cluster-count', 'visibility', visibility);
-      this.map.setLayoutProperty('unclustered-point', 'visibility', visibility);
-      this.map.setLayoutProperty('unclustered-point-ring', 'visibility', visibility);
-      this.map.setLayoutProperty('unclustered-point-glow', 'visibility', visibility);
-      this.map.setLayoutProperty('event-labels', 'visibility', visibility);
+      if (this.map.getLayer('unclustered-point')) this.map.setLayoutProperty('unclustered-point', 'visibility', visibility);
+      if (this.map.getLayer('unclustered-point-ring')) this.map.setLayoutProperty('unclustered-point-ring', 'visibility', visibility);
+      if (this.map.getLayer('unclustered-point-glow')) this.map.setLayoutProperty('unclustered-point-glow', 'visibility', visibility);
+      if (this.map.getLayer('event-labels')) this.map.setLayoutProperty('event-labels', 'visibility', visibility);
     }
   }
 

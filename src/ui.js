@@ -32,66 +32,24 @@ export class UIController {
   }
 
   bindLayerControls() {
-    // Layer toggles
-    document.querySelectorAll('.layer-item__toggle').forEach(toggle => {
-      toggle.addEventListener('change', (e) => {
-        const layerId = e.target.dataset.layer;
-        const isChecked = e.target.checked;
+    // Pill-based Layer toggles
+    document.querySelectorAll('.layer-toggle').forEach(toggle => {
+      toggle.addEventListener('click', (e) => {
+        const btn = e.target;
+        btn.classList.toggle('active');
         
-        const currentLayers = [...this.events.activeLayers];
-        if (isChecked) {
-          currentLayers.push(layerId);
-        } else {
-          const idx = currentLayers.indexOf(layerId);
-          if (idx > -1) currentLayers.splice(idx, 1);
-        }
+        const activeLayers = Array.from(document.querySelectorAll('.layer-toggle.active'))
+                                  .map(t => t.dataset.layer);
         
-        this.events.setLayers(currentLayers);
-        this.map.setActiveLayerTypes(currentLayers);
+        this.events.setLayers(activeLayers);
+        this.map.setActiveLayerTypes(activeLayers);
         this.updateUrlState();
       });
-    });
-
-    // Opacity sliders
-    document.querySelectorAll('.layer-item__opacity').forEach(slider => {
-      slider.addEventListener('input', (e) => {
-        const layerItem = e.target.closest('.layer-item');
-        const layerId = layerItem.querySelector('.layer-item__toggle').dataset.layer;
-        const opacity = e.target.value;
-        this.map.setLayerOpacity(layerId, opacity);
-      });
-    });
-
-    // Preset buttons
-    document.querySelectorAll('.preset-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        const preset = e.target.dataset.preset;
-        const layers = LAYER_PRESETS[preset] || LAYER_PRESETS.default;
-        
-        // Update checkboxes
-        document.querySelectorAll('.layer-item__toggle').forEach(toggle => {
-          toggle.checked = layers.includes(toggle.dataset.layer);
-        });
-        
-        this.events.setLayers(layers);
-        this.map.setActiveLayerTypes(layers);
-        this.updateUrlState();
-      });
-    });
-
-    // Reset button
-    document.getElementById('layers-reset').addEventListener('click', () => {
-      document.querySelectorAll('.layer-item__toggle').forEach(toggle => {
-        toggle.checked = LAYER_PRESETS.default.includes(toggle.dataset.layer);
-      });
-      this.events.setLayers(LAYER_PRESETS.default);
-      this.map.setActiveLayerTypes(LAYER_PRESETS.default);
-      this.updateUrlState();
     });
   }
 
   bindTimeControls() {
-    // Quick range buttons
+    // Pill-based Quick range buttons
     document.querySelectorAll('.time-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
         const range = e.target.dataset.range;
@@ -102,21 +60,8 @@ export class UIController {
         
         // Set time range
         this.events.setTimeRange(range);
-        this.updateTimeSlider(range);
         this.updateUrlState();
       });
-    });
-
-    // Play/Pause
-    document.getElementById('time-play').addEventListener('click', () => {
-      this.toggleTimeAnimation();
-    });
-
-    // Time slider
-    const timeSlider = document.getElementById('time-range');
-    timeSlider.addEventListener('input', (e) => {
-      const value = parseInt(e.target.value);
-      this.updateTimeDisplay(value);
     });
   }
 
@@ -218,10 +163,10 @@ export class UIController {
   bindDetailOverlay() {
     const overlay = document.getElementById('detail-overlay');
     const closeBtn = document.getElementById('detail-close');
-    const backdrop = overlay.querySelector('.detail-overlay__backdrop');
+    const backdrop = overlay.querySelector('.detail-drawer__backdrop');
 
     const closeOverlay = () => {
-      overlay.classList.remove('detail-overlay--visible');
+      overlay.classList.remove('detail-drawer--visible');
       overlay.setAttribute('aria-hidden', 'true');
     };
 
@@ -230,7 +175,7 @@ export class UIController {
 
     // Close on Escape
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && overlay.classList.contains('detail-overlay--visible')) {
+      if (e.key === 'Escape' && overlay.classList.contains('detail-drawer--visible')) {
         closeOverlay();
       }
     });
@@ -241,6 +186,8 @@ export class UIController {
     const panel = document.getElementById('notification-panel');
     const closeBtn = document.getElementById('notification-close');
     const badge = document.getElementById('notification-badge');
+
+    if (!toggle || !panel || !closeBtn || !badge) return;
 
     toggle.addEventListener('click', () => {
       const isVisible = panel.classList.contains('notification-panel--visible');
@@ -278,12 +225,16 @@ export class UIController {
 
     // Mobile menu toggle
     const menuToggle = document.getElementById('menu-toggle');
-    menuToggle.addEventListener('click', () => {
-      const leftPanel = document.getElementById('layer-panel');
-      leftPanel.classList.toggle('panel--left--open');
-      menuToggle.setAttribute('aria-expanded', 
-        leftPanel.classList.contains('panel--left--open'));
-    });
+    if (menuToggle) {
+      menuToggle.addEventListener('click', () => {
+        const leftPanel = document.getElementById('layer-panel');
+        if (leftPanel) {
+          leftPanel.classList.toggle('panel--left--open');
+          menuToggle.setAttribute('aria-expanded', 
+            leftPanel.classList.contains('panel--left--open'));
+        }
+      });
+    }
 
     // Alert ticker close
     document.querySelector('.alert-ticker__close').addEventListener('click', () => {
@@ -342,7 +293,7 @@ export class UIController {
           document.querySelectorAll('.panel--left, .panel--right').forEach(p => {
             p.classList.remove('panel--left--open', 'panel--right--open');
           });
-          document.getElementById('detail-overlay').classList.remove('detail-overlay--visible');
+          document.getElementById('detail-overlay').classList.remove('detail-drawer--visible');
           document.getElementById('notification-panel').classList.remove('notification-panel--visible');
           break;
       }
@@ -409,15 +360,20 @@ export class UIController {
     storage.set('theme', newTheme);
     
     // Update icons
-    document.getElementById('theme-icon-moon').hidden = !isDark;
-    document.getElementById('theme-icon-sun').hidden = isDark;
+    const moonIcon = document.getElementById('theme-icon-moon');
+    const sunIcon = document.getElementById('theme-icon-sun');
+    if (moonIcon) moonIcon.hidden = !isDark;
+    if (sunIcon) sunIcon.hidden = isDark;
   }
 
   loadPreferences() {
     const theme = storage.get('theme', 'dark');
     document.documentElement.setAttribute('data-theme', theme);
-    document.getElementById('theme-icon-moon').hidden = theme === 'light';
-    document.getElementById('theme-icon-sun').hidden = theme !== 'light';
+    
+    const moonIcon = document.getElementById('theme-icon-moon');
+    const sunIcon = document.getElementById('theme-icon-sun');
+    if (moonIcon) moonIcon.hidden = theme === 'light';
+    if (sunIcon) sunIcon.hidden = theme !== 'light';
   }
 
   updateUrlState() {
@@ -555,12 +511,12 @@ export class UIController {
         
         <div class="event-detail__actions">
           <a href="${event.url}" target="_blank" rel="noopener" class="btn btn--primary">View Source</a>
-          <button class="btn btn--secondary" onclick="this.closest('.detail-overlay').classList.remove('detail-overlay--visible')">Close</button>
+          <button class="btn btn--secondary" onclick="this.closest('.detail-drawer').classList.remove('detail-drawer--visible')">Close</button>
         </div>
       </div>
     `;
     
-    overlay.classList.add('detail-overlay--visible');
+    overlay.classList.add('detail-drawer--visible');
     overlay.setAttribute('aria-hidden', 'false');
   }
 
@@ -620,9 +576,8 @@ export class UIController {
     // Render filtered list in sidebar
     this.renderEventList(events);
     
-    // Send ALL events to map for proper layer filtering, or use passed events if no allEvents
-    const mapEvents = options.allEvents || events;
-    this.map.updateEvents(mapEvents);
+    // Send filtered events to map so time and layer filters apply visually
+    this.map.updateEvents(events);
     
     if (options.newEvent) {
       this.showNotification(options.newEvent);

@@ -196,19 +196,17 @@ export class EventsManager {
   }
 
   async loadEvents() {
-    let events;
+    let events = [];
     
     if (this.useMockData) {
       events = this.generateMockEvents(60);
     } else {
-      // Try real data first, fall back to mock
+      // Fetch only real data - do not fall back to mock data
       try {
         events = await this.fetchRealData();
-        if (events.length === 0) {
-          events = this.generateMockEvents(60);
-        }
-      } catch {
-        events = this.generateMockEvents(60);
+      } catch (e) {
+        console.error('Failed to load real data', e);
+        events = [];
       }
     }
 

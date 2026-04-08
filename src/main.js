@@ -6,6 +6,7 @@ import { MapController } from './map.js';
 import { EventsManager } from './events.js';
 import { UIController } from './ui.js';
 import { APP_CONFIG } from './config.js';
+import { getUrlParams, updateUrlParams } from './utils.js';
 
 /**
  * World Events Monitor Application
@@ -29,20 +30,38 @@ class WorldEventsApp {
     try {
       console.log('🌍 Initializing World Events Monitor...');
 
+      const urlParams = getUrlParams();
+
       // Initialize event manager first
       this.events = new EventsManager({
         onUpdate: (events, options) => this.handleEventsUpdate(events, options),
         onError: (error) => this.handleError(error)
       });
+      if (urlParams.layers) this.events.setLayers(urlParams.layers);
+      if (urlParams.time) this.events.setTimeRange(urlParams.time);
 
       // Initialize map
       this.map = new MapController('map', {
+        initialCenter: urlParams.lat && urlParams.lng ? [urlParams.lng, urlParams.lat] : null,
+        initialZoom: urlParams.zoom || null,
         onEventClick: (event) => this.handleEventClick(event),
         onViewportChange: (viewport) => this.handleViewportChange(viewport)
       });
 
       // Initialize UI controller
       this.ui = new UIController(this.events, this.map);
+
+      // Ensure UI reflects the URL parameters
+      if (urlParams.layers) {
+        document.querySelectorAll('.layer-toggle').forEach(btn => {
+          btn.classList.toggle('active', urlParams.layers.includes(btn.dataset.layer));
+        });
+      }
+      if (urlParams.time) {
+        document.querySelectorAll('.time-btn').forEach(btn => {
+          btn.classList.toggle('time-btn--active', btn.dataset.range === urlParams.time);
+        });
+      }
 
       // Load initial data
       await this.events.loadEvents();
@@ -101,15 +120,10 @@ class WorldEventsApp {
   }
 
   /**
-   * Handle viewport changes (for URL state)
+   * Handle map viewport change
    */
   handleViewportChange(viewport) {
-    // Update URL with current viewport
-    const params = new URLSearchParams(window.location.search);
-    params.set('lat', viewport.center.lat.toFixed(6));
-    params.set('lng', viewport.center.lng.toFixed(6));
-    params.set('zoom', viewport.zoom.toFixed(2));
-    window.history.replaceState({}, '', `${window.location.pathname}?${params}`);
+    if (this.ui) this.ui.updateUrlState();
   }
 
   /**
