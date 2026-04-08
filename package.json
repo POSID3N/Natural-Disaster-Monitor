@@ -1,0 +1,29 @@
+{
+  "name": "world-events-monitor",
+  "version": "1.0.0",
+  "description": "Premium real-time world events monitoring interface",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest"
+  },
+  "dependencies": {
+    "maplibre-gl": "^4.0.0",
+    "date-fns": "^3.0.0"
+  },
+  "devDependencies": {
+    "vite": "^5.0.0",
+    "vitest": "^1.0.0"
+  },
+  "keywords": [
+    "world-events",
+    "real-time",
+    "map",
+    "monitoring",
+    "geopolitics",
+    "dashboard"
+  ],
+  "license": "MIT"
+}

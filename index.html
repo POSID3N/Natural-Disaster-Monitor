@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="description" content="Real-time world events monitoring - conflicts, climate, disasters, and global intelligence">
+  <meta name="theme-color" content="#0d1117">
+  <title>World Events Monitor | Real-time Global Intelligence</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  
+  <!-- MapLibre GL -->
+  <link href="https://unpkg.com/maplibre-gl@4.0.0/dist/maplibre-gl.css" rel="stylesheet">
+  
+  <!-- Styles -->
+  <link rel="stylesheet" href="./src/styles.css">
+</head>
+<body>
+  <!-- Alert Ticker -->
+  <div id="alert-ticker" class="alert-ticker" role="alert" aria-live="polite" aria-atomic="true">
+    <div class="alert-ticker__content">
+      <span class="alert-ticker__icon" aria-hidden="true">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+          <path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0zm0 12a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm0-9a1 1 0 0 0-1 1v6a1 1 0 2 0V4a1 1 0 0 0-1-1z"/>
+        </svg>
+      </span>
+      <span class="alert-ticker__text">Initializing real-time monitoring...</span>
+    </div>
+    <button class="alert-ticker__close" aria-label="Dismiss alert">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor">
+        <path d="M7 6.293l4.146-4.147a.5.5 0 0 1 .708.708L7.707 7l4.147 4.146a.5.5 0 0 1-.708.708L7 7.707l-4.146 4.147a.5.5 0 0 1-.708-.708L6.293 7 2.146 2.854a.5.5 0 1 1 .708-.708L7 6.293z"/>
+      </svg>
+    </button>
+  </div>
+
+  <!-- App Container -->
+  <div id="app" class="app">
+    <!-- Header -->
+    <header class="header" role="banner">
+      <div class="header__brand">
+        <button id="menu-toggle" class="btn btn--ghost btn--icon header__menu-btn" aria-label="Toggle menu" aria-expanded="false">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+            <path d="M2 4h16v2H2zm0 5h16v2H2zm0 5h16v2H2z"/>
+          </svg>
+        </button>
+        <div class="header__logo">
+          <svg width="32" height="32" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+            <circle cx="16" cy="16" r="14" stroke="#58a6ff" stroke-width="2" fill="none"/>
+            <circle cx="16" cy="16" r="4" fill="#58a6ff"/>
+            <path d="M16 2v6M16 24v6M2 16h6M24 16h6" stroke="#58a6ff" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          <span class="header__title">World Events Monitor</span>
+        </div>
+      </div>
+
+      <!-- Global Search -->
+      <div class="header__search">
+        <div class="search-input">
+          <svg class="search-input__icon" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M11.7422 10.3439C12.5329 9.2673 13 7.9382 13 6.5C13 2.91015 10.0899 0 6.5 0C2.91015 0 0 2.91015 0 6.5C0 10.0899 2.91015 13 6.5 13C7.9382 13 9.2673 12.5329 10.3439 11.7422L14.1464 15.5456C14.3417 15.7409 14.6583 15.7409 14.8536 15.5456L15.5456 14.8536C15.7409 14.6583 15.7409 14.3417 15.5456 14.1464L11.7422 10.3439ZM6.5 11C8.98528 11 11 8.98528 11 6.5C11 4.01472 8.98528 2 6.5 2C4.01472 2 2 4.01472 2 6.5C2 8.98528 4.01472 11 6.5 11Z"/>
+          </svg>
+          <input 
+            type="text" 
+            id="global-search" 
+            class="search-input__field" 
+            placeholder="Search location, event, or coordinates..."
+            aria-label="Search locations and events"
+            autocomplete="off"
+          >
+          <kbd class="search-input__shortcut">F</kbd>
+        </div>
+        <div id="search-results" class="search-results" role="listbox" aria-hidden="true"></div>
+      </div>
+
+      <div class="header__actions">
+        <button id="notifications-toggle" class="btn btn--ghost btn--icon" aria-label="Notifications">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+            <path d="M10 2a6 6 0 0 0-6 6v3.586l-.707.707A1 1 0 0 0 4 14h12a1 1 0 0 0 .707-1.707L16 11.586V8a6 6 0 0 0-6-6zm0 16a2 2 0 0 1-2-2h4a2 2 0 0 1-2 2z"/>
+          </svg>
+          <span id="notification-badge" class="badge badge--danger" hidden>0</span>
+        </button>
+        <button id="theme-toggle" class="btn btn--ghost btn--icon" aria-label="Toggle theme">
+          <svg id="theme-icon-moon" width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+            <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/>
+          </svg>
+          <svg id="theme-icon-sun" width="20" height="20" viewBox="0 0 20 20" fill="currentColor" hidden>
+            <path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clip-rule="evenodd"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main" role="main">
+      <!-- Left Sidebar: Layer Controls -->
+      <aside id="layer-panel" class="panel panel--left" role="complementary" aria-label="Layer controls">
+        <div class="panel__header">
+          <h2 class="panel__title">Layers</h2>
+          <button class="btn btn--ghost btn--sm" id="layers-reset">Reset</button>
+        </div>
+        <div class="panel__content">
+          <div class="layer-groups">
+            <!-- Security Events -->
+            <div class="layer-group">
+              <h3 class="layer-group__title">Security</h3>
+              <div class="layer-list">
+                <label class="layer-item">
+                  <input type="checkbox" class="layer-item__toggle" data-layer="conflicts" checked>
+                  <span class="layer-item__icon" style="--layer-color: #ff6b6b">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                      <path d="M8 1L2 7v2l6-6 6 6V7L8 1zM4 9v6h2v-4h4v4h2V9L8 4 4 9z"/>
+                    </svg>
+                  </span>
+                  <span class="layer-item__label">Armed Conflicts</span>
+                </label>
+                <label class="layer-item">
+                  <input type="checkbox" class="layer-item__toggle" data-layer="military">
+                  <span class="layer-item__icon" style="--layer-color: #ff9f43">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                      <path d="M8 0L2 4v8l6 4 6-4V4L8 0zm0 2l4 2.5v5L8 12 4 9.5v-5L8 2z"/>
+                    </svg>
+                  </span>
+                  <span class="layer-item__label">Military Activity</span>
+                </label>
+                <label class="layer-item">
+                  <input type="checkbox" class="layer-item__toggle" data-layer="sanctions">
+                  <span class="layer-item__icon" style="--layer-color: #feca57">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                      <path d="M8 0a8 8 0 100 16A8 8 0 008 0zm0 14A6 6 0 118 2a6 6 0 010 12z"/>
+                      <path d="M4 8h8v2H4z"/>
+                    </svg>
+                  </span>
+                  <span class="layer-item__label">Sanctions</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Natural Events -->
+            <div class="layer-group">
+              <h3 class="layer-group__title">Natural Events</h3>
+              <div class="layer-list">
+                <label class="layer-item">
+                  <input type="checkbox" class="layer-item__toggle" data-layer="wildfires" checked>
+                  <span class="layer-item__icon" style="--layer-color: #ff6b6b">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                      <path d="M8 0c-2 3-4 5-4 8a4 4 0 008 0c0-2-1.5-4-2-6-.5 1.5-1 3-2 3V0z"/>
+                    </svg>
+                  </span>
+                  <span class="layer-item__label">Wildfires</span>
+                </label>
+                <label class="layer-item">
+                  <input type="checkbox" class="layer-item__toggle" data-layer="earthquakes" checked>
+                  <span class="layer-item__icon" style="--layer-color: #48dbfb">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                      <path d="M8 1L1 15h14L8 1z"/>
+                    </svg>
+                  </span>
+                  <span class="layer-item__label">Earthquakes</span>
+                </label>
+                <label class="layer-item">
+                  <input type="checkbox" class="layer-item__toggle" data-layer="storms">
+                  <span class="layer-item__icon" style="--layer-color: #54a0ff">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                      <path d="M8 2a5 5 0 00-5 5v1H2v2h14V8h-1V7a5 5 0 00-5-5z"/>
+                    </svg>
+                  </span>
+                  <span class="layer-item__label">Severe Weather</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Climate & Health -->
+            <div class="layer-group">
+              <h3 class="layer-group__title">Climate & Health</h3>
+              <div class="layer-list">
+                <label class="layer-item">
+                  <input type="checkbox" class="layer-item__toggle" data-layer="climate">
+                  <span class="layer-item__icon" style="--layer-color: #00d2d3">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                      <path d="M8 0a4 4 0 00-4 4v4a4 4 0 008 0V4a4 4 0 00-4-4z"/>
+                    </svg>
+                  </span>
+                  <span class="layer-item__label">Climate Anomalies</span>
+                </label>
+                <label class="layer-item">
+                  <input type="checkbox" class="layer-item__toggle" data-layer="disease">
+                  <span class="layer-item__icon" style="--layer-color: #ff9ff3">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                      <path d="M8 0a3 3 0 00-3 3v1H4v2h1v6h2V6h2v6h2V6h1V4h-1V3a3 3 0 00-3-3z"/>
+                    </svg>
+                  </span>
+                  <span class="layer-item__label">Disease Outbreaks</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="layer-presets">
+            <h3 class="layer-group__title">Presets</h3>
+            <div class="preset-buttons">
+              <button class="btn btn--secondary btn--sm preset-btn" data-preset="security">Security Focus</button>
+              <button class="btn btn--secondary btn--sm preset-btn" data-preset="natural">Natural Events</button>
+              <button class="btn btn--secondary btn--sm preset-btn" data-preset="all">All Layers</button>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Map Container -->
+      <div class="map-wrapper" role="application" aria-label="Interactive world map">
+        <div id="map" class="map"></div>
+        
+        <!-- Map Controls -->
+        <div class="map-controls" role="toolbar" aria-label="Map navigation controls">
+          <button class="map-control" id="zoom-in" aria-label="Zoom in">+</button>
+          <button class="map-control" id="zoom-out" aria-label="Zoom out">-</button>
+          <button class="map-control" id="reset-view" aria-label="Reset map view">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M8 3a5 5 0 100 10A5 5 0 008 3zm0 9a4 4 0 110-8 4 4 0 010 8z"/>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Time Controls -->
+        <div class="time-controls" role="region" aria-label="Time range controls">
+          <div class="time-controls__header">
+            <span class="time-controls__label">Time Range</span>
+            <div class="time-controls__quick">
+              <button class="time-btn time-btn--active" data-range="24h">24h</button>
+              <button class="time-btn" data-range="7d">7d</button>
+              <button class="time-btn" data-range="30d">30d</button>
+            </div>
+          </div>
+          <div class="time-controls__slider">
+            <button id="time-play" class="btn btn--ghost btn--icon" aria-label="Play timeline animation">
+              <svg id="play-icon" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M4 2l10 6-10 6V2z"/>
+              </svg>
+              <svg id="pause-icon" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" hidden>
+                <path d="M4 2h3v12H4zm5 0h3v12H9z"/>
+              </svg>
+            </button>
+            <div class="time-slider">
+              <input type="range" id="time-range" min="0" max="100" value="100" aria-label="Time slider">
+              <div class="time-slider__ticks">
+                <span class="time-slider__tick">-24h</span>
+                <span class="time-slider__tick">-12h</span>
+                <span class="time-slider__tick">Now</span>
+              </div>
+            </div>
+            <span id="time-display" class="time-display">Now</span>
+          </div>
+        </div>
+
+        <!-- Legend -->
+        <div class="map-legend" role="region" aria-label="Map legend">
+          <h4 class="map-legend__title">Event Types</h4>
+          <div class="legend-items">
+            <div class="legend-item">
+              <span class="legend-item__marker" style="background: #ff6b6b"></span>
+              <span class="legend-item__label">Conflict</span>
+            </div>
+            <div class="legend-item">
+              <span class="legend-item__marker" style="background: #ff9f43"></span>
+              <span class="legend-item__label">Military</span>
+            </div>
+            <div class="legend-item">
+              <span class="legend-item__marker" style="background: #ff6b6b"></span>
+              <span class="legend-item__label">Wildfire</span>
+            </div>
+            <div class="legend-item">
+              <span class="legend-item__marker" style="background: #48dbfb"></span>
+              <span class="legend-item__label">Earthquake</span>
+            </div>
+            <div class="legend-item">
+              <span class="legend-item__marker" style="background: #54a0ff"></span>
+              <span class="legend-item__label">Weather</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Sidebar: Event Feed -->
+      <aside id="event-panel" class="panel panel--right" role="complementary" aria-label="Event feed">
+        <div class="panel__header">
+          <h2 class="panel__title">Recent Events</h2>
+          <span id="event-count" class="panel__count">0</span>
+        </div>
+        <div class="panel__filters">
+          <select id="event-sort" class="select select--sm" aria-label="Sort events">
+            <option value="newest">Newest First</option>
+            <option value="severity">Severity</option>
+            <option value="proximity">Nearest</option>
+          </select>
+          <button id="event-filter-btn" class="btn btn--ghost btn--sm btn--icon" aria-label="Filter events">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M2 4h12v2H2zm0 3h8v2H2zm0 3h5v2H2z"/>
+            </svg>
+          </button>
+        </div>
+        <div id="event-list" class="event-list" role="feed" aria-busy="false">
+          <!-- Events populated by JS -->
+          <div class="event-list__empty">
+            <svg width="48" height="48" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.5">
+              <circle cx="24" cy="24" r="20"/>
+              <path d="M24 14v10l6 6"/>
+            </svg>
+            <p>Loading events...</p>
+          </div>
+        </div>
+        <button id="load-more" class="btn btn--secondary btn--full" hidden>Load More</button>
+      </aside>
+    </main>
+
+    <!-- Event Detail Overlay -->
+    <div id="detail-overlay" class="detail-overlay" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="detail-title">
+      <div class="detail-overlay__backdrop"></div>
+      <div class="detail-overlay__card">
+        <button id="detail-close" class="btn btn--ghost btn--icon detail-overlay__close" aria-label="Close details">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+            <path d="M10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 011.414-1.414L10 8.586z"/>
+          </svg>
+        </button>
+        <div id="detail-content" class="detail-overlay__content">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Notification Panel -->
+    <div id="notification-panel" class="notification-panel" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="notification-title">
+      <div class="notification-panel__header">
+        <h3 id="notification-title" class="notification-panel__title">Notifications</h3>
+        <button id="notification-close" class="btn btn--ghost btn--icon" aria-label="Close notifications">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+            <path d="M10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 011.414-1.414L10 8.586z"/>
+          </svg>
+        </button>
+      </div>
+      <div id="notification-list" class="notification-list">
+        <!-- Populated by JS -->
+        <div class="notification-list__empty">No new notifications</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>
