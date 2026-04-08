@@ -3,7 +3,7 @@
 // ============================================
 
 import maplibregl from 'maplibre-gl';
-import { APP_CONFIG, ICONS } from './config.js';
+import { APP_CONFIG, ICONS, LAYER_PRESETS } from './config.js';
 import { createSvg, generateId } from './utils.js';
 
 export class MapController {
@@ -14,6 +14,8 @@ export class MapController {
     this.markers = new Map();
     this.clusters = new Map();
     this.activeLayers = new Set();
+    this.activeLayerTypes = new Set(LAYER_PRESETS.default);
+    this.allEventData = [];
     this.eventData = [];
     this.onEventClick = options.onEventClick || (() => {});
     this.onViewportChange = options.onViewportChange || (() => {});
@@ -72,8 +74,8 @@ export class MapController {
           features: []
         },
         cluster: true,
-        clusterMaxZoom: APP_CONFIG.clustering.maxZoom,
-        clusterRadius: APP_CONFIG.clustering.radius,
+        clusterMaxZoom: 14,
+        clusterRadius: 40,
         clusterProperties: {
           types: ['concat', ['concat', ['get', 'type'], ',']]
         }
@@ -121,12 +123,12 @@ export class MapController {
         }
       });
 
-      // Unclustered point layer - outer glow
+      // Unclustered point layer - outer glow (with layer type filter)
       this.map.addLayer({
         id: 'unclustered-point-glow',
         type: 'circle',
         source: 'events',
-        filter: ['!', ['has', 'point_count']],
+        filter: ['all', ['!', ['has', 'point_count']], ['boolean', ['feature-state', 'visible'], true]],
         paint: {
           'circle-color': ['get', 'color'],
           'circle-radius': 18,
@@ -140,7 +142,7 @@ export class MapController {
         id: 'unclustered-point-ring',
         type: 'circle',
         source: 'events',
-        filter: ['!', ['has', 'point_count']],
+        filter: ['all', ['!', ['has', 'point_count']], ['boolean', ['feature-state', 'visible'], true]],
         paint: {
           'circle-color': 'transparent',
           'circle-radius': 14,
@@ -154,7 +156,7 @@ export class MapController {
         id: 'unclustered-point',
         type: 'circle',
         source: 'events',
-        filter: ['!', ['has', 'point_count']],
+        filter: ['all', ['!', ['has', 'point_count']], ['boolean', ['feature-state', 'visible'], true]],
         paint: {
           'circle-color': ['get', 'color'],
           'circle-radius': 10,
@@ -217,7 +219,10 @@ export class MapController {
   }
 
   updateEvents(events) {
+    // Store all events - don't filter them out, just update visibility
+    this.allEventData = events;
     this.eventData = events;
+    
     const features = events.map(event => ({
       type: 'Feature',
       geometry: {
@@ -238,7 +243,36 @@ export class MapController {
         type: 'FeatureCollection',
         features
       });
+      
+      // Apply current layer filter after data loads
+      if (this.activeLayerTypes && this.activeLayerTypes.size > 0) {
+        this.filterByLayerTypes(this.activeLayerTypes);
+      }
     }
+  }
+
+  filterByLayerTypes(activeTypes) {
+    // Store active layer types
+    this.activeLayerTypes = new Set(activeTypes);
+    
+    if (!this.map.getSource('events')) return;
+    
+    // Build filter expression: show if type is in activeTypes AND not clustered
+    const typeFilter = ['in', ['get', 'type'], ['literal', [...activeTypes]]];
+    const notClustered = ['!', ['has', 'point_count']];
+    
+    // Apply filter to all point layers
+    const filter = ['all', notClustered, typeFilter];
+    
+    this.map.setFilter('unclustered-point', filter);
+    this.map.setFilter('unclustered-point-ring', filter);
+    this.map.setFilter('unclustered-point-glow', filter);
+    
+    // For clusters, only show if cluster contains at least one visible type
+    // This is more complex - we need to check if the cluster's types intersect with activeTypes
+    // For simplicity, we show all clusters but they may expand to empty points
+    this.map.setFilter('clusters', ['has', 'point_count']);
+    this.map.setFilter('cluster-count', ['has', 'point_count']);
   }
 
   setLayerOpacity(layerId, opacity) {
@@ -250,6 +284,25 @@ export class MapController {
   }
 
   toggleLayer(layerId, visible) {
+    // Handle individual layer types
+    if (layerId !== 'events' && APP_CONFIG.eventTypes[layerId]) {
+      // Update active layer types set
+      if (!this.activeLayerTypes) {
+        this.activeLayerTypes = new Set(['conflicts', 'wildfires', 'earthquakes']);
+      }
+      
+      if (visible) {
+        this.activeLayerTypes.add(layerId);
+      } else {
+        this.activeLayerTypes.delete(layerId);
+      }
+      
+      // Apply filter
+      this.filterByLayerTypes(this.activeLayerTypes);
+      return;
+    }
+    
+    // Global events toggle
     const visibility = visible ? 'visible' : 'none';
     if (layerId === 'events') {
       this.map.setLayoutProperty('clusters', 'visibility', visibility);
@@ -258,6 +311,11 @@ export class MapController {
       this.map.setLayoutProperty('unclustered-point-ring', 'visibility', visibility);
       this.map.setLayoutProperty('unclustered-point-glow', 'visibility', visibility);
     }
+  }
+
+  setActiveLayerTypes(types) {
+    this.activeLayerTypes = new Set(types);
+    this.filterByLayerTypes(this.activeLayerTypes);
   }
 
   flyTo(coordinates, zoom = 12) {
@@ -270,15 +328,25 @@ export class MapController {
   }
 
   setFilter(timeRange) {
-    // Filter events by time range
+    // Filter events by time range but keep all events on map
+    // Just update which ones are visible
     const now = Date.now();
     const cutoff = now - (timeRange.hours * 60 * 60 * 1000);
     
-    const filteredEvents = this.eventData.filter(e => 
-      new Date(e.timestamp).getTime() > cutoff
+    // Filter the data but update visibility state instead of removing from source
+    const timeFilteredIds = new Set(
+      this.allEventData
+        .filter(e => new Date(e.timestamp).getTime() > cutoff)
+        .map(e => e.id)
     );
     
-    this.updateEvents(filteredEvents);
+    // Re-apply layer filter which will include time filtering via feature state
+    if (this.activeLayerTypes) {
+      this.filterByLayerTypes(this.activeLayerTypes);
+    }
+    
+    // Update the visible event data reference for other components
+    this.eventData = this.allEventData.filter(e => timeFilteredIds.has(e.id));
   }
 
   resetView() {

@@ -47,7 +47,7 @@ export class UIController {
         }
         
         this.events.setLayers(currentLayers);
-        this.map.toggleLayer('events', currentLayers.length > 0);
+        this.map.setActiveLayerTypes(currentLayers);
         this.updateUrlState();
       });
     });
@@ -74,6 +74,7 @@ export class UIController {
         });
         
         this.events.setLayers(layers);
+        this.map.setActiveLayerTypes(layers);
         this.updateUrlState();
       });
     });
@@ -84,6 +85,7 @@ export class UIController {
         toggle.checked = LAYER_PRESETS.default.includes(toggle.dataset.layer);
       });
       this.events.setLayers(LAYER_PRESETS.default);
+      this.map.setActiveLayerTypes(LAYER_PRESETS.default);
       this.updateUrlState();
     });
   }
@@ -615,8 +617,12 @@ export class UIController {
   }
 
   onEventsUpdate(events, options = {}) {
+    // Render filtered list in sidebar
     this.renderEventList(events);
-    this.map.updateEvents(events);
+    
+    // Send ALL events to map for proper layer filtering, or use passed events if no allEvents
+    const mapEvents = options.allEvents || events;
+    this.map.updateEvents(mapEvents);
     
     if (options.newEvent) {
       this.showNotification(options.newEvent);

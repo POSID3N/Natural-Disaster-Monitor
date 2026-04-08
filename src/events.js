@@ -214,7 +214,8 @@ export class EventsManager {
 
     this.events = events;
     this.applyFilters();
-    this.onUpdate(this.filteredEvents);
+    // Pass filtered events for UI list, but indicate all events are available for map
+    this.onUpdate(this.filteredEvents, { allEvents: this.events });
     this.lastUpdate = new Date();
   }
 
@@ -237,7 +238,7 @@ export class EventsManager {
   setLayers(layers) {
     this.activeLayers = new Set(layers);
     this.applyFilters();
-    this.onUpdate(this.filteredEvents);
+    this.onUpdate(this.filteredEvents, { allEvents: this.events, layerChange: true });
     
     // Reload if we have new layer types
     const needsReload = [...this.activeLayers].some(layer => 
@@ -252,7 +253,7 @@ export class EventsManager {
     if (APP_CONFIG.timeRanges[rangeKey]) {
       this.timeRange = APP_CONFIG.timeRanges[rangeKey];
       this.applyFilters();
-      this.onUpdate(this.filteredEvents);
+      this.onUpdate(this.filteredEvents, { allEvents: this.events, timeChange: true });
     }
   }
 
