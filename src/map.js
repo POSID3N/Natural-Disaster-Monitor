@@ -166,13 +166,39 @@ export class MapController {
         }
       });
 
+      // Event labels layer - text tags
+      this.map.addLayer({
+        id: 'event-labels',
+        type: 'symbol',
+        source: 'events',
+        filter: ['all', ['!', ['has', 'point_count']], ['boolean', ['feature-state', 'visible'], true]],
+        layout: {
+          'text-field': ['get', 'title'],
+          'text-size': 11,
+          'text-anchor': 'left',
+          'text-offset': [1.2, 0],
+          'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
+          'text-allow-overlap': false,
+          'text-ignore-placement': false,
+          'text-padding': 2
+        },
+        paint: {
+          'text-color': '#ffffff',
+          'text-halo-color': '#0d1117',
+          'text-halo-width': 2,
+          'text-halo-blur': 1,
+          'text-opacity': 0.9
+        }
+      });
+
       // Click handlers for both layers
       this.map.on('click', 'unclustered-point', (e) => this.handlePointClick(e));
       this.map.on('click', 'unclustered-point-ring', (e) => this.handlePointClick(e));
       this.map.on('click', 'unclustered-point-glow', (e) => this.handlePointClick(e));
+      this.map.on('click', 'event-labels', (e) => this.handlePointClick(e));
       
       // Hover cursor for all point layers
-      ['unclustered-point', 'unclustered-point-ring', 'unclustered-point-glow'].forEach(layer => {
+      ['unclustered-point', 'unclustered-point-ring', 'unclustered-point-glow', 'event-labels'].forEach(layer => {
         this.map.on('mouseenter', layer, () => this.map.getCanvas().style.cursor = 'pointer');
         this.map.on('mouseleave', layer, () => this.map.getCanvas().style.cursor = '');
       });
@@ -232,6 +258,7 @@ export class MapController {
       properties: {
         id: event.id,
         type: event.type,
+        title: event.title || event.type,
         color: APP_CONFIG.eventTypes[event.type]?.color || '#58a6ff',
         severity: event.severity,
         timestamp: event.timestamp
@@ -267,6 +294,7 @@ export class MapController {
     this.map.setFilter('unclustered-point', filter);
     this.map.setFilter('unclustered-point-ring', filter);
     this.map.setFilter('unclustered-point-glow', filter);
+    this.map.setFilter('event-labels', filter);
     
     // For clusters, only show if cluster contains at least one visible type
     // This is more complex - we need to check if the cluster's types intersect with activeTypes
@@ -310,6 +338,7 @@ export class MapController {
       this.map.setLayoutProperty('unclustered-point', 'visibility', visibility);
       this.map.setLayoutProperty('unclustered-point-ring', 'visibility', visibility);
       this.map.setLayoutProperty('unclustered-point-glow', 'visibility', visibility);
+      this.map.setLayoutProperty('event-labels', 'visibility', visibility);
     }
   }
 
