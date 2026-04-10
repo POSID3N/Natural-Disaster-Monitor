@@ -1,11 +1,12 @@
 {
   "version": 2,
-  "public": true,
-  "framework": "vite",
-  "buildCommand": "npx vite build",
-  "outputDirectory": "dist",
-  "installCommand": "npm install",
-  "github": {
-    "enabled": false
-  }
+  "builds": [
+    {
+      "src": "package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "dist"
+      }
+    }
+  ]
 }
