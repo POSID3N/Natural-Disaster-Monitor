@@ -18,6 +18,7 @@ export class UIController {
   }
 
   init() {
+    this.activeFeedFilter = 'all';
     this.bindLayerControls();
     this.bindTimeControls();
     this.bindSearch();
@@ -26,20 +27,48 @@ export class UIController {
     this.bindHeaderControls();
     this.bindKeyboardShortcuts();
     this.bindMobileControls();
+    this.bindFeedFilters();
+    this.bindFabToggle();
     
     // Initialize from storage
     this.loadPreferences();
   }
 
+  bindFeedFilters() {
+    const filters = document.querySelectorAll('.feed-filter');
+    filters.forEach(btn => {
+      btn.addEventListener('click', () => {
+        filters.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        this.activeFeedFilter = btn.dataset.filter;
+        // Re-render with the current events
+        this.renderEventList(this.events.filteredEvents);
+      });
+    });
+  }
+
+  bindFabToggle() {
+    const fab = document.getElementById('fab-toggle-panel');
+    const panel = document.getElementById('event-panel');
+    const iconOpen = document.getElementById('fab-icon-open');
+    const iconClose = document.getElementById('fab-icon-close');
+
+    if (!fab || !panel) return;
+
+    fab.addEventListener('click', () => {
+      const isCollapsed = panel.classList.toggle('feed-panel--collapsed');
+      // X icon shows when panel is open (not collapsed), document icon when collapsed
+      iconClose.style.display = isCollapsed ? 'none' : '';
+      iconOpen.style.display = isCollapsed ? '' : 'none';
+    });
+  }
+
   bindLayerControls() {
-    // Pill-based Layer toggles
-    document.querySelectorAll('.layer-toggle').forEach(toggle => {
-      toggle.addEventListener('click', (e) => {
-        const btn = e.target;
-        btn.classList.toggle('active');
-        
-        const activeLayers = Array.from(document.querySelectorAll('.layer-toggle.active'))
-                                  .map(t => t.dataset.layer);
+    // Legend checkbox-based Layer toggles
+    document.querySelectorAll('.legend-checkbox').forEach(checkbox => {
+      checkbox.addEventListener('change', (e) => {
+        const activeLayers = Array.from(document.querySelectorAll('.legend-checkbox:checked'))
+                                  .map(cb => cb.dataset.layer);
         
         this.events.setLayers(activeLayers);
         this.map.setActiveLayerTypes(activeLayers);
@@ -68,6 +97,8 @@ export class UIController {
   bindSearch() {
     const searchInput = document.getElementById('global-search');
     const resultsContainer = document.getElementById('search-results');
+
+    if (!searchInput || !resultsContainer) return;
 
     const performSearch = debounce(async (query) => {
       if (query.length < APP_CONFIG.search.minChars) {
@@ -155,7 +186,8 @@ export class UIController {
         const lng = parseFloat(el.dataset.lng);
         this.map.flyTo([lng, lat], 10);
         container.classList.remove('search-results--visible');
-        document.getElementById('global-search').value = '';
+        const searchInput = document.getElementById('global-search');
+        if (searchInput) searchInput.value = '';
       });
     });
   }
@@ -219,9 +251,11 @@ export class UIController {
   bindHeaderControls() {
     // Theme toggle
     const themeToggle = document.getElementById('theme-toggle');
-    themeToggle.addEventListener('click', () => {
-      this.toggleTheme();
-    });
+    if (themeToggle) {
+      themeToggle.addEventListener('click', () => {
+        this.toggleTheme();
+      });
+    }
 
     // Mobile menu toggle
     const menuToggle = document.getElementById('menu-toggle');
@@ -243,16 +277,11 @@ export class UIController {
   }
 
   bindMobileControls() {
-    // Map zoom controls
-    document.getElementById('zoom-in').addEventListener('click', () => this.map.zoomIn());
-    document.getElementById('zoom-out').addEventListener('click', () => this.map.zoomOut());
-    document.getElementById('reset-view').addEventListener('click', () => this.map.resetView());
-
-    // Event filter button (mobile)
-    document.getElementById('event-filter-btn').addEventListener('click', () => {
-      const rightPanel = document.getElementById('event-panel');
-      rightPanel.classList.toggle('panel--right--open');
-    });
+    // Map reset control
+    const resetViewBtn = document.getElementById('reset-view');
+    if (resetViewBtn) {
+      resetViewBtn.addEventListener('click', () => this.map.resetView());
+    }
 
     // Close panels on mobile when clicking outside
     document.addEventListener('click', (e) => {
@@ -260,11 +289,11 @@ export class UIController {
         const leftPanel = document.getElementById('layer-panel');
         const rightPanel = document.getElementById('event-panel');
         
-        if (!e.target.closest('#layer-panel') && !e.target.closest('#menu-toggle')) {
+        if (leftPanel && !e.target.closest('#layer-panel') && !e.target.closest('#menu-toggle')) {
           leftPanel.classList.remove('panel--left--open');
         }
         
-        if (!e.target.closest('#event-panel') && !e.target.closest('#event-filter-btn')) {
+        if (rightPanel && !e.target.closest('#event-panel') && !e.target.closest('#fab-toggle-panel')) {
           rightPanel.classList.remove('panel--right--open');
         }
       }
@@ -394,22 +423,29 @@ export class UIController {
     const container = document.getElementById('event-list');
     const countEl = document.getElementById('event-count');
     
-    countEl.textContent = events.length;
+    // Apply feed filter (All / Earthquakes / Wildfires)
+    let displayEvents = events;
+    if (this.activeFeedFilter && this.activeFeedFilter !== 'all') {
+      displayEvents = events.filter(e => e.type === this.activeFeedFilter);
+    }
     
-    if (events.length === 0) {
+    countEl.textContent = `${displayEvents.length} Events`;
+    
+    if (displayEvents.length === 0) {
+      const label = this.activeFeedFilter === 'all' ? '' : ` for ${this.activeFeedFilter}`;
       container.innerHTML = `
         <div class="event-list__empty">
           <svg width="48" height="48" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.5">
             <circle cx="24" cy="24" r="20"/>
             <path d="M24 14v10l6 6"/>
           </svg>
-          <p>No events match current filters</p>
+          <p>No events${label} match current filters</p>
         </div>
       `;
       return;
     }
 
-    container.innerHTML = events.map(event => this.createEventCard(event)).join('');
+    container.innerHTML = displayEvents.map(event => this.createEventCard(event)).join('');
     
     // Add click handlers
     container.querySelectorAll('.event-card').forEach(card => {

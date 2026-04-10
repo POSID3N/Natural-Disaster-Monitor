@@ -711,6 +711,13 @@ body {
   backdrop-filter: blur(8px);
 }
 
+.map-control--large {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-lg);
+  z-index: var(--z-panels);
+}
+
 .map-control:hover {
   background: var(--color-bg-tertiary);
   border-color: var(--text-tertiary);
@@ -719,20 +726,22 @@ body {
 /* Floating Overlays - Time Range and Layers */
 .time-slider {
   position: absolute;
-  top: 10px;
-  right: 60px; /* shift left of zoom controls */
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
   z-index: var(--z-panels);
   background: var(--color-bg-secondary);
-  padding: 6px 10px;
+  padding: 10px 16px;
   border: 1px solid var(--border-primary);
-  border-radius: 4px;
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-md);
 }
 
 .time-slider-label {
-  font-size: 9px;
+  font-size: 11px;
   color: var(--text-tertiary);
   letter-spacing: 1px;
   font-weight: bold;
@@ -740,16 +749,17 @@ body {
 
 .time-slider-buttons {
   display: flex;
-  gap: 2px;
+  gap: 4px;
 }
 
 .time-btn {
-  padding: 3px 6px;
+  padding: 6px 10px;
   background: transparent;
   border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
   color: var(--text-tertiary);
   font-family: inherit;
-  font-size: 9px;
+  font-size: 11px;
   cursor: pointer;
   transition: all 0.2s ease;
 }
@@ -798,15 +808,16 @@ body {
 /* Map Legend */
 .map-legend {
   position: absolute;
-  top: var(--space-4);
+  bottom: var(--space-4);
   left: var(--space-4);
-  padding: var(--space-3) var(--space-4);
+  padding: var(--space-4) var(--space-5);
   background: var(--color-bg-secondary);
   border: 1px solid var(--border-primary);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-xl);
   box-shadow: var(--shadow-md);
   backdrop-filter: blur(8px);
   z-index: var(--z-panels);
+  min-width: 180px;
 }
 
 .map-legend__title {
@@ -827,20 +838,31 @@ body {
 .legend-item {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--space-3);
+  cursor: pointer;
+}
+
+.legend-item input[type="checkbox"] {
+  margin-left: auto;
+  width: 16px;
+  height: 16px;
+  accent-color: var(--color-accent-primary);
+  cursor: pointer;
 }
 
 .legend-item__marker {
-  width: 12px;
-  height: 12px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
   border: 2px solid white;
   box-shadow: var(--shadow-sm);
+  flex-shrink: 0;
 }
 
 .legend-item__label {
-  font-size: var(--text-xs);
+  font-size: var(--text-sm);
   color: var(--text-secondary);
+  flex: 1;
 }
 
 /* ============================================
@@ -1597,11 +1619,142 @@ body {
   border-radius: 12px;
 }
 
-.feed-panel__controls {
+/* Feed Panel Filter Tabs */
+.feed-panel__filters {
+  display: flex;
+  gap: 6px;
   padding: var(--space-3) var(--space-4);
-  background: rgba(0, 0, 0, 0.2);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  margin-bottom: var(--space-3);
+  background: rgba(0, 0, 0, 0.25);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.feed-filter {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  white-space: nowrap;
+}
+
+.feed-filter:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #fff;
+}
+
+.feed-filter.active {
+  background: linear-gradient(135deg, rgba(255, 51, 102, 0.25), rgba(88, 166, 255, 0.2));
+  border-color: rgba(255, 51, 102, 0.4);
+  color: #fff;
+  box-shadow: 0 0 12px rgba(255, 51, 102, 0.15);
+}
+
+.feed-filter.active[data-filter="earthquakes"] {
+  background: linear-gradient(135deg, rgba(72, 219, 251, 0.25), rgba(72, 219, 251, 0.1));
+  border-color: rgba(72, 219, 251, 0.4);
+  box-shadow: 0 0 12px rgba(72, 219, 251, 0.15);
+}
+
+.feed-filter.active[data-filter="wildfires"] {
+  background: linear-gradient(135deg, rgba(255, 107, 107, 0.25), rgba(255, 159, 67, 0.15));
+  border-color: rgba(255, 107, 107, 0.4);
+  box-shadow: 0 0 12px rgba(255, 107, 107, 0.15);
+}
+
+.feed-filter svg {
+  flex-shrink: 0;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+.feed-filter.active svg {
+  opacity: 1;
+}
+
+/* Panel Toggle Animation */
+.feed-panel {
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+}
+
+.feed-panel--collapsed {
+  transform: translateX(calc(100% + 32px));
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Floating Action Button */
+.fab-toggle {
+  position: fixed;
+  bottom: 28px;
+  right: 28px;
+  z-index: 1100;
+  width: 52px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 16px;
+  background: rgba(13, 17, 23, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  color: #fff;
+  cursor: pointer;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.fab-toggle:hover {
+  transform: scale(1.08);
+  background: rgba(255, 51, 102, 0.15);
+  border-color: rgba(255, 51, 102, 0.4);
+  box-shadow: 0 8px 32px rgba(255, 51, 102, 0.2), 0 0 0 1px rgba(255, 51, 102, 0.1);
+}
+
+.fab-toggle:active {
+  transform: scale(0.95);
+}
+
+.fab-toggle svg {
+  transition: transform 0.3s ease;
+}
+
+/* Header toggle button */
+.fab-toggle-header {
+  width: 42px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.fab-toggle-header:hover {
+  background: var(--color-bg-tertiary);
+  border-color: var(--text-tertiary);
+  color: var(--text-primary);
+}
+
+.fab-toggle-header svg {
+  width: 22px;
+  height: 22px;
 }
 
 .glass-input {

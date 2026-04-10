@@ -6,9 +6,9 @@ export const APP_CONFIG = {
   name: 'World Events Monitor',
   version: '1.0.0',
   defaultCenter: [20, 20],
-  defaultZoom: 2,
+  defaultZoom: 1.5,
   maxZoom: 18,
-  minZoom: 1,
+  minZoom: 0.5,
   tileServer: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
   
   // Event type definitions with colors and icons
